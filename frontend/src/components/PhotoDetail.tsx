@@ -77,8 +77,8 @@ export function PhotoDetail({ photo, onClose, onDelete }: PhotoDetailProps) {
                         style={{
                           left: `${bbox.x * 100}%`,
                           top: `${bbox.y * 100}%`,
-                          width: `${bbox.width * 100}%`,
-                          height: `${bbox.height * 100}%`,
+                          width: `${bbox.w * 100}%`,
+                          height: `${bbox.h * 100}%`,
                         }}
                       >
                         <span

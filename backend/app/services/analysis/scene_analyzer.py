@@ -56,20 +56,42 @@ class SceneAnalyzer(BaseAnalyzer):
 
     Uses rule-based inference from YOLO detection results to produce
     WHERE category tags representing the likely location/scene.
+
+    Can accept pre-computed object names from ObjectAnalyzer via
+    set_detected_objects() to avoid running YOLO a second time.
     """
 
     def __init__(self) -> None:
-        self._detected_objects: set[str] = set()
+        self._model = None
+        self._detected_objects: set[str] | None = None
 
     async def warmup(self) -> None:
-        """No model to load for rule-based classification."""
-        logger.info("SceneAnalyzer ready (rule-based)")
+        """Pre-load the YOLO model for fallback object detection."""
+        try:
+            from ultralytics import YOLO
+
+            self._model = YOLO("yolov8n.pt")
+            logger.info("SceneAnalyzer warmed up with cached YOLO model")
+        except Exception as e:
+            logger.warning(f"SceneAnalyzer warmup failed: {e}")
+
+    def set_detected_objects(self, objects: set[str]) -> None:
+        """Accept pre-computed detected object names from ObjectAnalyzer.
+
+        This allows the pipeline to pass results from ObjectAnalyzer
+        so SceneAnalyzer does not need to run YOLO again.
+
+        Args:
+            objects: Set of detected object class names.
+        """
+        self._detected_objects = objects
 
     async def analyze(self, image_path: str) -> list[TagResult]:
         """Classify scene based on objects detected by YOLO.
 
-        This analyzer runs YOLOv8 to get objects, then applies rules
-        to infer the scene/location.
+        If detected objects have been set via set_detected_objects(),
+        uses those directly. Otherwise falls back to running YOLO
+        with a cached model instance.
 
         Args:
             image_path: Path to the image file.
@@ -80,22 +102,13 @@ class SceneAnalyzer(BaseAnalyzer):
         tags: list[TagResult] = []
 
         try:
-            from ultralytics import YOLO
-
-            model = YOLO("yolov8n.pt")
-            results = model(image_path, verbose=False)
-
-            detected_objects: set[str] = set()
-            for result in results:
-                boxes = result.boxes
-                if boxes is None:
-                    continue
-                for box in boxes:
-                    cls_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    if confidence >= 0.3:
-                        class_name = result.names[cls_id]
-                        detected_objects.add(class_name)
+            # Use pre-computed objects if available, otherwise run YOLO
+            if self._detected_objects is not None:
+                detected_objects = self._detected_objects
+                # Reset for next call
+                self._detected_objects = None
+            else:
+                detected_objects = self._run_object_detection(image_path)
 
             if not detected_objects:
                 return tags
@@ -132,3 +145,39 @@ class SceneAnalyzer(BaseAnalyzer):
             logger.error(f"SceneAnalyzer error: {e}")
 
         return tags
+
+    def _run_object_detection(self, image_path: str) -> set[str]:
+        """Run YOLO object detection as fallback when no pre-computed results.
+
+        Uses a cached model instance to avoid repeated loading.
+
+        Args:
+            image_path: Path to the image file.
+
+        Returns:
+            Set of detected object class names.
+        """
+        detected_objects: set[str] = set()
+
+        try:
+            from ultralytics import YOLO
+
+            if self._model is None:
+                self._model = YOLO("yolov8n.pt")
+
+            results = self._model(image_path, verbose=False)
+
+            for result in results:
+                boxes = result.boxes
+                if boxes is None:
+                    continue
+                for box in boxes:
+                    cls_id = int(box.cls[0])
+                    confidence = float(box.conf[0])
+                    if confidence >= 0.3:
+                        class_name = result.names[cls_id]
+                        detected_objects.add(class_name)
+        except Exception as e:
+            logger.error(f"SceneAnalyzer object detection fallback error: {e}")
+
+        return detected_objects

@@ -8,8 +8,8 @@ export enum TagCategory {
 export interface BoundingBox {
   x: number;
   y: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
 }
 
 export interface Tag {
@@ -32,10 +32,12 @@ export interface Photo {
 }
 
 export enum SortBy {
-  DATE = "date",
-  NUM_PEOPLE = "num_people",
-  LOCATION = "location",
-  CONFIDENCE = "confidence",
+  DATE = "upload_date",
+  // TODO: NUM_PEOPLE, LOCATION, CONFIDENCE require computed columns or
+  // additional backend support. Mapped to upload_date as fallback for now.
+  NUM_PEOPLE = "upload_date",
+  LOCATION = "upload_date",
+  CONFIDENCE = "upload_date",
 }
 
 export enum SortOrder {

@@ -3,6 +3,8 @@
 import json
 import logging
 
+from PIL import Image
+
 from app.services.analysis.base import BaseAnalyzer, TagResult
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,10 @@ class ObjectAnalyzer(BaseAnalyzer):
             if self._model is None:
                 self._model = YOLO("yolov8n.pt")
 
+            # Get image dimensions for normalizing bounding boxes to 0-1 range
+            with Image.open(image_path) as img:
+                img_width, img_height = img.size
+
             results = self._model(image_path, verbose=False)
 
             seen_objects: dict[str, float] = {}
@@ -62,13 +68,13 @@ class ObjectAnalyzer(BaseAnalyzer):
                     if class_name not in seen_objects or confidence > seen_objects[class_name]:
                         seen_objects[class_name] = confidence
 
-                    # Get bounding box coordinates
+                    # Get bounding box coordinates normalized to 0-1 range
                     xyxy = box.xyxy[0].tolist()
                     bbox = json.dumps({
-                        "x": int(xyxy[0]),
-                        "y": int(xyxy[1]),
-                        "w": int(xyxy[2] - xyxy[0]),
-                        "h": int(xyxy[3] - xyxy[1]),
+                        "x": xyxy[0] / img_width,
+                        "y": xyxy[1] / img_height,
+                        "w": (xyxy[2] - xyxy[0]) / img_width,
+                        "h": (xyxy[3] - xyxy[1]) / img_height,
                     })
 
                     tags.append(TagResult(

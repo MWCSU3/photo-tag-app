@@ -48,7 +48,10 @@ async def upload_photo(
         )
 
     # Save upload
-    photo = await photo_service.save_upload(content, file.filename, db)
+    try:
+        photo = await photo_service.save_upload(content, file.filename, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Run analysis
     photo = await photo_service.analyze_photo(photo, pipeline, db)

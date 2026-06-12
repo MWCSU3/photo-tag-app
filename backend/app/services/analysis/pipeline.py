@@ -35,6 +35,9 @@ class AnalysisPipeline:
     async def analyze(self, image_path: str) -> list[TagResult]:
         """Run all analyzers on an image and return combined results.
 
+        Passes object detection class names from ObjectAnalyzer to
+        SceneAnalyzer so it does not need to run YOLO a second time.
+
         Args:
             image_path: Path to the image file to analyze.
 
@@ -42,11 +45,22 @@ class AnalysisPipeline:
             Deduplicated list of TagResult from all analyzers.
         """
         all_tags: list[TagResult] = []
+        detected_object_names: set[str] = set()
 
         for analyzer in self.analyzers:
             try:
+                # Pass object detection results to SceneAnalyzer
+                if isinstance(analyzer, SceneAnalyzer) and detected_object_names:
+                    analyzer.set_detected_objects(detected_object_names)
+
                 tags = await analyzer.analyze(image_path)
                 all_tags.extend(tags)
+
+                # Collect object names from ObjectAnalyzer for SceneAnalyzer
+                if isinstance(analyzer, ObjectAnalyzer):
+                    detected_object_names = {
+                        tag.value for tag in tags if tag.category == "WHAT"
+                    }
             except Exception as e:
                 logger.error(
                     f"Analyzer {analyzer.__class__.__name__} failed: {e}"

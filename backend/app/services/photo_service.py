@@ -41,13 +41,18 @@ async def save_upload(
     # Write file to disk
     filepath.write_bytes(file_content)
 
-    # Get image dimensions
+    # Validate file is a real image and get dimensions
     width, height = None, None
     try:
         with Image.open(filepath) as img:
+            img.verify()
+        # Re-open after verify() since verify() may leave file in unusable state
+        with Image.open(filepath) as img:
             width, height = img.size
     except Exception:
-        pass
+        # Invalid image file - clean up and raise
+        filepath.unlink(missing_ok=True)
+        raise ValueError("Uploaded file is not a valid image")
 
     # Create database record
     photo = Photo(
@@ -155,8 +160,9 @@ async def get_photos(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Apply sorting
-    sort_column = getattr(Photo, sort_by, Photo.upload_date)
+    # Apply sorting (allowlist valid columns to prevent attribute probing)
+    ALLOWED_SORT_FIELDS = {"upload_date", "file_size", "original_filename"}
+    sort_column = getattr(Photo, sort_by) if sort_by in ALLOWED_SORT_FIELDS else Photo.upload_date
     if sort_order == "asc":
         query = query.order_by(sort_column.asc())
     else:

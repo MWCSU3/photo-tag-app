@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any
 
+from PIL import Image
+
 from app.services.analysis.base import BaseAnalyzer, TagResult
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,10 @@ class FaceAnalyzer(BaseAnalyzer):
         try:
             from deepface import DeepFace
 
+            # Get image dimensions for normalizing bounding boxes to 0-1 range
+            with Image.open(image_path) as img:
+                img_width, img_height = img.size
+
             # Analyze faces in the image
             results: list[dict[str, Any]] = DeepFace.analyze(
                 img_path=image_path,
@@ -60,11 +66,12 @@ class FaceAnalyzer(BaseAnalyzer):
                 if not region or (region.get("w", 0) == 0 and region.get("h", 0) == 0):
                     continue
 
+                # Normalize bounding box coordinates to 0-1 range
                 bbox = json.dumps({
-                    "x": region.get("x", 0),
-                    "y": region.get("y", 0),
-                    "w": region.get("w", 0),
-                    "h": region.get("h", 0),
+                    "x": region.get("x", 0) / img_width,
+                    "y": region.get("y", 0) / img_height,
+                    "w": region.get("w", 0) / img_width,
+                    "h": region.get("h", 0) / img_height,
                 })
 
                 # Add FACES tag for face detection

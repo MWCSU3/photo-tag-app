@@ -34,7 +34,6 @@ class PhotoResponse(BaseModel):
     id: int
     filename: str
     original_filename: str
-    filepath: str
     upload_date: datetime
     width: int | None = None
     height: int | None = None
