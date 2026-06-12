@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Implement 3-tier LocationAnalyzer (Places365 scene classification, CLIP landmark detection, GeoEstimation) and integrate into the analysis pipeline. Also add dropdown filter UI to the test page.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Add dependencies to backend/pyproject.toml: Add 'open-clip-torch>=2.24.0', 'geopy>=2.4.0' to the [project].dependencies list. These provide CLIP for landmark detection and geopy for reverse geocoding. torch/torchvision are already available as transitive deps of ultralytics.",
     "Step 2 - Create backend/app/services/analysis/location_analyzer.py implementing LocationAnalyzer(BaseAnalyzer). This single file implements all 3 tiers: (a) Places365 scene classification using a ResNet50 backbone with Places365 category weights downloaded on first use to settings.MODEL_CACHE_DIR, producing WHERE tags like 'beach', 'mountain', 'urban_street', 'indoor_shopping'. (b) CLIP-based landmark detection using open_clip with ViT-B-32 model, comparing image embeddings against a curated list of ~50 famous landmarks (Eiffel Tower, Statue of Liberty, Colosseum, etc.) with known lat/lon, producing WHERE tags with structured bounding_box JSON containing {type:'landmark', city, country, lat, lon}. (c) GeoEstimation using a simplified approach: use the CLIP model to compare against geographic scene descriptors (tropical, mediterranean, northern european, east asian, etc.) to estimate approximate region, then use Nominatim reverse geocoding (via geopy) to convert landmark lat/lon to structured addresses. Each tier operates independently and results are merged. Use confidence thresholds: Places365 >= 0.15, Landmark >= 0.25, Geo >= 0.20.",
@@ -37,5 +37,5 @@
     "Check that backend/static/test.html contains a select element for tag filtering"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All verification checks pass. LocationAnalyzer instantiates successfully, pipeline has 4 analyzers, 50 landmarks in database. Dependencies (open-clip-torch 3.3.0, geopy 2.4.1) installed via uv sync. The test.html filter dropdown uses dynamic optgroup creation via JavaScript from the /api/tags endpoint."
 }
