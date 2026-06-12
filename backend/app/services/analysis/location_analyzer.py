@@ -9,6 +9,7 @@ Implements a 3-tier location detection approach:
 import asyncio
 import json
 import logging
+import socket
 from pathlib import Path
 
 import torch
@@ -23,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Confidence thresholds for each tier
 PLACES365_THRESHOLD = 0.15
-LANDMARK_THRESHOLD = 0.25
-GEO_THRESHOLD = 0.20
+LANDMARK_THRESHOLD = 0.35
+GEO_THRESHOLD = 0.28
 
 # Famous landmarks database with coordinates
 LANDMARKS: list[dict] = [
@@ -108,6 +109,9 @@ class LocationAnalyzer(BaseAnalyzer):
     Tier 3: GeoEstimation (approximate region with reverse geocoding)
     """
 
+    # Class-level cache for reverse geocoding of static region centroids
+    _geocode_cache: dict[tuple[float, float], str] = {}
+
     def __init__(self) -> None:
         self._places365_model = None
         self._places365_categories: list[str] = []
@@ -180,40 +184,47 @@ class LocationAnalyzer(BaseAnalyzer):
         cache_dir = Path(settings.MODEL_CACHE_DIR)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Download categories file
-        categories_file = cache_dir / "categories_places365.txt"
-        if not categories_file.exists():
-            logger.info("Downloading Places365 categories...")
-            url = "https://raw.githubusercontent.com/CSAILVision/places365/master/categories_places365.txt"
-            await asyncio.to_thread(
-                urllib.request.urlretrieve, url, str(categories_file)
-            )
+        # Set a socket timeout for downloads to avoid blocking indefinitely
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(60)
 
-        # Parse categories
-        with open(categories_file, "r") as f:
-            self._places365_categories = []
-            for line in f:
-                # Format: /a/airfield 0
-                parts = line.strip().split(" ")
-                category_path = parts[0]
-                # Extract readable name from path like /a/airfield -> airfield
-                category_name = category_path.split("/")[-1].replace("_", " ")
-                self._places365_categories.append(category_name)
+        try:
+            # Download categories file
+            categories_file = cache_dir / "categories_places365.txt"
+            if not categories_file.exists():
+                logger.info("Downloading Places365 categories...")
+                url = "https://raw.githubusercontent.com/CSAILVision/places365/master/categories_places365.txt"
+                await asyncio.to_thread(
+                    urllib.request.urlretrieve, url, str(categories_file)
+                )
 
-        # Download model weights
-        model_file = cache_dir / "resnet50_places365.pth.tar"
-        if not model_file.exists():
-            logger.info("Downloading Places365 ResNet50 weights...")
-            url = "http://places2.csail.mit.edu/models_places365/resnet50_places365.pth.tar"
-            await asyncio.to_thread(
-                urllib.request.urlretrieve, url, str(model_file)
-            )
+            # Parse categories
+            with open(categories_file, "r") as f:
+                self._places365_categories = []
+                for line in f:
+                    # Format: /a/airfield 0
+                    parts = line.strip().split(" ")
+                    category_path = parts[0]
+                    # Extract readable name from path like /a/airfield -> airfield
+                    category_name = category_path.split("/")[-1].replace("_", " ")
+                    self._places365_categories.append(category_name)
+
+            # Download model weights
+            model_file = cache_dir / "resnet50_places365.pth.tar"
+            if not model_file.exists():
+                logger.info("Downloading Places365 ResNet50 weights...")
+                url = "https://places2.csail.mit.edu/models_places365/resnet50_places365.pth.tar"
+                await asyncio.to_thread(
+                    urllib.request.urlretrieve, url, str(model_file)
+                )
+        finally:
+            socket.setdefaulttimeout(old_timeout)
 
         # Load model
         from torchvision import models
 
         model = models.resnet50(num_classes=365)
-        checkpoint = torch.load(str(model_file), map_location=self._device, weights_only=False)
+        checkpoint = torch.load(str(model_file), map_location=self._device, weights_only=True)
 
         # Handle different checkpoint formats
         state_dict = checkpoint.get("state_dict", checkpoint)
@@ -302,6 +313,9 @@ class LocationAnalyzer(BaseAnalyzer):
     async def _detect_landmarks(self, image_path: str) -> list[TagResult]:
         """Tier 2: Detect famous landmarks using CLIP similarity.
 
+        Applies softmax normalization over candidate similarities to get a
+        proper probability distribution before thresholding.
+
         Args:
             image_path: Path to the image file.
 
@@ -321,9 +335,12 @@ class LocationAnalyzer(BaseAnalyzer):
             # Compute cosine similarity against all landmarks
             similarities = (image_features @ self._landmark_text_features.T)[0]
 
+            # Apply softmax normalization to get proper probability distribution
+            probabilities = F.softmax(similarities, dim=0)
+
         tags: list[TagResult] = []
-        for i, score in enumerate(similarities):
-            confidence = float(score)
+        for i, prob in enumerate(probabilities):
+            confidence = float(prob)
             if confidence >= LANDMARK_THRESHOLD:
                 landmark = LANDMARKS[i]
                 bbox_data = json.dumps({
@@ -345,11 +362,14 @@ class LocationAnalyzer(BaseAnalyzer):
     async def _estimate_geo(self, image_path: str) -> list[TagResult]:
         """Tier 3: Estimate geographic region using CLIP and reverse geocoding.
 
+        Only reverse-geocodes the top-1 region (highest score) to avoid
+        excessive Nominatim requests.
+
         Args:
             image_path: Path to the image file.
 
         Returns:
-            Geographic region estimates above threshold with coordinates.
+            Geographic region estimate above threshold with coordinates.
         """
         if self._clip_model is None or self._geo_text_features is None:
             return []
@@ -364,38 +384,46 @@ class LocationAnalyzer(BaseAnalyzer):
             # Compute cosine similarity against geographic regions
             similarities = (image_features @ self._geo_text_features.T)[0]
 
-        tags: list[TagResult] = []
-        for i, score in enumerate(similarities):
-            confidence = float(score)
-            if confidence >= GEO_THRESHOLD:
-                region = GEO_REGIONS[i]
-                location_value = region["name"]
+            # Apply softmax normalization for proper probability distribution
+            probabilities = F.softmax(similarities, dim=0)
 
-                # Try reverse geocoding for better location name
-                try:
-                    location_value = await self._reverse_geocode(
-                        region["lat"], region["lon"]
-                    )
-                except Exception as e:
-                    logger.debug(f"Reverse geocoding failed for {region['name']}: {e}")
+        # Only take the top-1 region to limit Nominatim requests
+        top_idx = int(torch.argmax(probabilities))
+        top_confidence = float(probabilities[top_idx])
 
-                bbox_data = json.dumps({
-                    "type": "geo_estimate",
-                    "lat": region["lat"],
-                    "lon": region["lon"],
-                    "region": region["name"],
-                })
-                tags.append(TagResult(
-                    category="WHERE",
-                    value=location_value,
-                    confidence=confidence,
-                    bounding_box=bbox_data,
-                ))
+        if top_confidence < GEO_THRESHOLD:
+            return []
 
-        return tags
+        region = GEO_REGIONS[top_idx]
+        location_value = region["name"]
+
+        # Try reverse geocoding for better location name
+        try:
+            location_value = await self._reverse_geocode(
+                region["lat"], region["lon"]
+            )
+        except Exception as e:
+            logger.debug(f"Reverse geocoding failed for {region['name']}: {e}")
+
+        bbox_data = json.dumps({
+            "type": "geo_estimate",
+            "lat": region["lat"],
+            "lon": region["lon"],
+            "region": region["name"],
+        })
+
+        return [TagResult(
+            category="WHERE",
+            value=location_value,
+            confidence=top_confidence,
+            bounding_box=bbox_data,
+        )]
 
     async def _reverse_geocode(self, lat: float, lon: float) -> str:
         """Reverse geocode coordinates to a human-readable location name.
+
+        Uses a class-level cache for static region centroids to avoid
+        repeated Nominatim requests.
 
         Args:
             lat: Latitude.
@@ -404,13 +432,19 @@ class LocationAnalyzer(BaseAnalyzer):
         Returns:
             Formatted location string like 'City, Country'.
         """
+        # Check cache first (region centroids are static)
+        cache_key = (lat, lon)
+        if cache_key in LocationAnalyzer._geocode_cache:
+            return LocationAnalyzer._geocode_cache[cache_key]
+
         from geopy.geocoders import Nominatim
 
-        geolocator = Nominatim(user_agent="photo-tagger")
+        geolocator = Nominatim(user_agent="photo-tagger", timeout=5)
         location = await asyncio.to_thread(
             geolocator.reverse, f"{lat}, {lon}", language="en"
         )
 
+        result = f"{lat:.1f}, {lon:.1f}"
         if location and location.raw.get("address"):
             address = location.raw["address"]
             city = (
@@ -421,7 +455,10 @@ class LocationAnalyzer(BaseAnalyzer):
             )
             country = address.get("country", "")
             if city and country:
-                return f"{city}, {country}"
-            return country or city
+                result = f"{city}, {country}"
+            elif country or city:
+                result = country or city
 
-        return f"{lat:.1f}, {lon:.1f}"
+        # Cache the result for static centroids
+        LocationAnalyzer._geocode_cache[cache_key] = result
+        return result

@@ -569,7 +569,10 @@
                 const data = await response.json();
 
                 if (!data.photos || data.photos.length === 0) {
-                    galleryContainer.innerHTML = '<div class="gallery-empty">No photos match the current filter. Try a different tag or clear the filter.</div>';
+                    const msg = currentFilter
+                        ? 'No photos match the current filter. Try a different tag or clear the filter.'
+                        : 'No photos uploaded yet. Upload one above to get started!';
+                    galleryContainer.innerHTML = `<div class="gallery-empty">${msg}</div>`;
                     return;
                 }
 
