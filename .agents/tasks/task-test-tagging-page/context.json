@@ -1,0 +1,21 @@
+{
+  "project_type": "Full-stack photo tagging app - Python FastAPI backend + Next.js frontend",
+  "language": "Python (backend), TypeScript (frontend), HTML/JS (new test page)",
+  "build_system": "uv for Python backend, pnpm for Next.js frontend",
+  "test_framework": "pytest for backend, Next.js build for frontend",
+  "build_command": "cd /projects/sandbox/backend && uv run pytest tests/ -q",
+  "test_command": "cd /projects/sandbox/backend && uv run pytest tests/ -q",
+  "verification_instructions": "1. Start backend: cd /projects/sandbox/backend && uv run uvicorn app.main:app --port 8000. 2. Open test page in browser at http://localhost:8000/test. 3. Upload an image and verify tags appear.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "Backend deps already installed via uv. No additional setup needed.",
+  "environment_constraints": "OPEN_INTERNET - full network access available.",
+  "contribution_requirements": "None specific for this test page.",
+  "key_patterns": "Backend uses FastAPI with async endpoints, SQLAlchemy async sessions, Pydantic v2 schemas. API returns JSON with photo data including tags array. Each tag has category (WHO/FACES/WHAT/WHERE), value, and confidence. Photos served as static files from /uploads/ path.",
+  "relevant_files": [
+    "/projects/sandbox/backend/app/main.py",
+    "/projects/sandbox/backend/app/api/routes/photos.py",
+    "/projects/sandbox/backend/app/schemas/photo.py",
+    "/projects/sandbox/backend/app/config.py"
+  ],
+  "directory_structure": "backend/app/ - FastAPI app with routes, services, ML pipeline. frontend/ - Next.js app. The new test page will be a standalone HTML file served by the backend."
+}

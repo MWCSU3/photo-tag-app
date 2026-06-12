@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Create a standalone HTML test page for photo tagging that is served directly by the FastAPI backend. The page allows uploading photos, shows a loading/processing state while the ML pipeline runs, and then displays the uploaded photo alongside its detected tags organized by category (WHO, FACES, WHAT, WHERE) with confidence scores. Also shows previously uploaded photos and their tags.",
+  "status": "in_progress",
+  "steps": [
+    "Create a new file at /projects/sandbox/backend/static/test.html - a single self-contained HTML page with embedded CSS and JavaScript (no build step needed). The page should have: (1) A clean, modern UI with a file upload area (drag-and-drop + click to select), (2) A processing/loading indicator that shows while the ML pipeline analyzes the photo, (3) A results section that shows the uploaded photo thumbnail alongside its tags grouped by category (WHO, FACES, WHAT, WHERE) with confidence percentages, (4) A gallery section below showing all previously uploaded photos with their tags, (5) The page should auto-load existing photos on page load by calling GET /api/photos.",
+    "Add a static files mount and route in /projects/sandbox/backend/app/main.py to serve the test page. Mount the static directory and add a route at GET /test that serves the HTML file. The static directory should be at /projects/sandbox/backend/static/. Make sure it does not conflict with the existing /uploads mount.",
+    "The JavaScript in the HTML page should: (1) POST to /api/photos/upload with FormData containing the file field named 'file', (2) Parse the JSON response which contains { id, filename, original_filename, upload_date, tags: [{category, value, confidence}] }, (3) Display tags grouped by category with colored badges (different color per category), (4) On page load, fetch GET /api/photos and render the gallery of existing photos with their tags, (5) Photos are accessible via /uploads/{filename} URL path."
+  ],
+  "acceptance_criteria": [
+    "Navigating to http://localhost:8000/test serves the test HTML page",
+    "The page has a working file upload area (drag-and-drop and click-to-select)",
+    "After uploading a photo, the page shows the photo with its ML-detected tags grouped by category",
+    "Tags show confidence scores as percentages",
+    "Previously uploaded photos are displayed in a gallery section on page load",
+    "The page is fully self-contained (single HTML file, no external dependencies beyond the backend API)"
+  ],
+  "verification": [
+    "Run: cd /projects/sandbox/backend && uv run python -c \"from app.main import app; print('App loads OK')\"",
+    "Run: cd /projects/sandbox/backend && uv run pytest tests/ -q to ensure existing tests still pass",
+    "Verify the test.html file exists at /projects/sandbox/backend/static/test.html",
+    "Verify the /test route is registered in main.py"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
