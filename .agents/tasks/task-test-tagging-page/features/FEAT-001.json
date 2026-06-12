@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Create a standalone HTML test page for photo tagging that is served directly by the FastAPI backend. The page allows uploading photos, shows a loading/processing state while the ML pipeline runs, and then displays the uploaded photo alongside its detected tags organized by category (WHO, FACES, WHAT, WHERE) with confidence scores. Also shows previously uploaded photos and their tags.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create a new file at /projects/sandbox/backend/static/test.html - a single self-contained HTML page with embedded CSS and JavaScript (no build step needed). The page should have: (1) A clean, modern UI with a file upload area (drag-and-drop + click to select), (2) A processing/loading indicator that shows while the ML pipeline analyzes the photo, (3) A results section that shows the uploaded photo thumbnail alongside its tags grouped by category (WHO, FACES, WHAT, WHERE) with confidence percentages, (4) A gallery section below showing all previously uploaded photos with their tags, (5) The page should auto-load existing photos on page load by calling GET /api/photos.",
     "Add a static files mount and route in /projects/sandbox/backend/app/main.py to serve the test page. Mount the static directory and add a route at GET /test that serves the HTML file. The static directory should be at /projects/sandbox/backend/static/. Make sure it does not conflict with the existing /uploads mount.",
@@ -23,5 +23,5 @@
     "Verify the /test route is registered in main.py"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 27 existing tests pass. The /test route and /static mount were added after the /uploads mount. The STATIC_DIR is computed relative to main.py using Path(__file__).parent.parent / 'static'. FileResponse is used to serve the HTML directly at /test rather than relying on the StaticFiles mount path."
 }
