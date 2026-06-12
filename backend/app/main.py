@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.photos import router as photos_router
 from app.api.routes.tags import router as tags_router
@@ -67,6 +68,11 @@ app.add_middleware(
 # Include routers
 app.include_router(photos_router)
 app.include_router(tags_router)
+
+# Serve uploaded photos as static files
+# Ensure the uploads directory exists before mounting
+settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
 
 
 @app.get("/health")

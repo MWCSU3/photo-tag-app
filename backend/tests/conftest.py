@@ -8,13 +8,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from PIL import Image
+from PIL import Image, ImageDraw
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 from app.main import app
 from app.services.analysis.base import TagResult
 from app.services.analysis.pipeline import AnalysisPipeline
+
+# Fixtures directory path
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(scope="session")
@@ -106,3 +109,23 @@ def sample_image(tmp_path) -> bytes:
 def sample_image_file(sample_image) -> tuple[str, bytes, str]:
     """Return a tuple suitable for httpx file upload."""
     return ("file", ("test_photo.jpg", sample_image, "image/jpeg"))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def fixture_test_image():
+    """Generate a test image in the fixtures directory for use in tests.
+
+    This creates a small 100x100 JPEG image with basic shapes and colors
+    that can be used as a test fixture.
+    """
+    FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
+    fixture_path = FIXTURES_DIR / "test_photo.jpg"
+
+    img = Image.new("RGB", (100, 100), color=(70, 130, 180))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([10, 10, 50, 50], fill="red")
+    draw.ellipse([55, 55, 95, 95], fill="green")
+    draw.line([(0, 0), (100, 100)], fill="white", width=2)
+
+    img.save(str(fixture_path), format="JPEG", quality=85)
+    return fixture_path
