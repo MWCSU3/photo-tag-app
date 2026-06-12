@@ -221,6 +221,71 @@
             color: #92400e;
         }
 
+        /* Filter Bar */
+        .filter-bar {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-bar label {
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.9rem;
+        }
+
+        .filter-bar select {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #334155;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            min-width: 200px;
+        }
+
+        .filter-bar select:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .active-filter-chip {
+            display: none;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.8rem;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            color: #4338ca;
+            font-weight: 500;
+        }
+
+        .active-filter-chip.visible {
+            display: inline-flex;
+        }
+
+        .active-filter-chip .remove-filter {
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1;
+            color: #6366f1;
+        }
+
+        .active-filter-chip .remove-filter:hover {
+            color: #ef4444;
+        }
+
         /* Gallery */
         .gallery-section {
             margin-top: 2rem;
@@ -343,6 +408,19 @@
         <!-- Gallery -->
         <div class="gallery-section">
             <div class="gallery-header">Photo Gallery</div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <label for="tag-filter">Filter by tag:</label>
+                <select id="tag-filter">
+                    <option value="">All Photos</option>
+                </select>
+                <span class="active-filter-chip" id="active-filter-chip">
+                    <span id="chip-label"></span>
+                    <span class="remove-filter" id="remove-filter">&times;</span>
+                </span>
+            </div>
+
             <div id="gallery-container">
                 <div class="gallery-empty">No photos uploaded yet. Upload one above to get started!</div>
             </div>
@@ -357,6 +435,13 @@
         const resultImage = document.getElementById('result-image');
         const resultTags = document.getElementById('result-tags');
         const galleryContainer = document.getElementById('gallery-container');
+        const tagFilter = document.getElementById('tag-filter');
+        const activeFilterChip = document.getElementById('active-filter-chip');
+        const chipLabel = document.getElementById('chip-label');
+        const removeFilter = document.getElementById('remove-filter');
+
+        // Current filter state
+        let currentFilter = null; // {category: 'WHERE', value: 'beach'}
 
         // Category color mapping for reference
         const categoryLabels = {
@@ -470,7 +555,13 @@
         // Load gallery of existing photos
         async function loadGallery() {
             try {
-                const response = await fetch('/api/photos');
+                let url = '/api/photos';
+                if (currentFilter) {
+                    const categories = JSON.stringify({[currentFilter.category]: [currentFilter.value]});
+                    url += '?categories=' + encodeURIComponent(categories);
+                }
+
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Failed to load photos');
                 }
@@ -478,7 +569,7 @@
                 const data = await response.json();
 
                 if (!data.photos || data.photos.length === 0) {
-                    galleryContainer.innerHTML = '<div class="gallery-empty">No photos uploaded yet. Upload one above to get started!</div>';
+                    galleryContainer.innerHTML = '<div class="gallery-empty">No photos match the current filter. Try a different tag or clear the filter.</div>';
                     return;
                 }
 
@@ -503,6 +594,61 @@
             }
         }
 
+        // Load available tags for the filter dropdown
+        async function loadTags() {
+            try {
+                const response = await fetch('/api/tags');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const categoryOrder = ['WHO', 'FACES', 'WHAT', 'WHERE'];
+
+                // Clear existing options except the default
+                tagFilter.innerHTML = '<option value="">All Photos</option>';
+
+                categoryOrder.forEach(category => {
+                    if (data[category] && data[category].length > 0) {
+                        const label = categoryLabels[category] || category;
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = label;
+
+                        data[category].forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = JSON.stringify({category: category, value: item.value});
+                            option.textContent = `${item.value} (${item.count})`;
+                            optgroup.appendChild(option);
+                        });
+
+                        tagFilter.appendChild(optgroup);
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load tags:', error);
+            }
+        }
+
+        // Filter change handler
+        tagFilter.addEventListener('change', () => {
+            const val = tagFilter.value;
+            if (val) {
+                currentFilter = JSON.parse(val);
+                chipLabel.textContent = currentFilter.value;
+                activeFilterChip.classList.add('visible');
+            } else {
+                currentFilter = null;
+                activeFilterChip.classList.remove('visible');
+            }
+            loadGallery();
+        });
+
+        // Remove filter chip handler
+        removeFilter.addEventListener('click', () => {
+            currentFilter = null;
+            tagFilter.value = '';
+            activeFilterChip.classList.remove('visible');
+            loadGallery();
+        });
+
         // Format file size
         function formatFileSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
@@ -510,8 +656,11 @@
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
-        // Load gallery on page load
-        document.addEventListener('DOMContentLoaded', loadGallery);
+        // Load gallery and tags on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGallery();
+            loadTags();
+        });
     </script>
 </body>
 </html>

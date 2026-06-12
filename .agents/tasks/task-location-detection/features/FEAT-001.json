@@ -1,0 +1,41 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Implement 3-tier LocationAnalyzer (Places365 scene classification, CLIP landmark detection, GeoEstimation) and integrate into the analysis pipeline. Also add dropdown filter UI to the test page.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1 - Add dependencies to backend/pyproject.toml: Add 'open-clip-torch>=2.24.0', 'geopy>=2.4.0' to the [project].dependencies list. These provide CLIP for landmark detection and geopy for reverse geocoding. torch/torchvision are already available as transitive deps of ultralytics.",
+    "Step 2 - Create backend/app/services/analysis/location_analyzer.py implementing LocationAnalyzer(BaseAnalyzer). This single file implements all 3 tiers: (a) Places365 scene classification using a ResNet50 backbone with Places365 category weights downloaded on first use to settings.MODEL_CACHE_DIR, producing WHERE tags like 'beach', 'mountain', 'urban_street', 'indoor_shopping'. (b) CLIP-based landmark detection using open_clip with ViT-B-32 model, comparing image embeddings against a curated list of ~50 famous landmarks (Eiffel Tower, Statue of Liberty, Colosseum, etc.) with known lat/lon, producing WHERE tags with structured bounding_box JSON containing {type:'landmark', city, country, lat, lon}. (c) GeoEstimation using a simplified approach: use the CLIP model to compare against geographic scene descriptors (tropical, mediterranean, northern european, east asian, etc.) to estimate approximate region, then use Nominatim reverse geocoding (via geopy) to convert landmark lat/lon to structured addresses. Each tier operates independently and results are merged. Use confidence thresholds: Places365 >= 0.15, Landmark >= 0.25, Geo >= 0.20.",
+    "Step 3 - Define the landmark database as a Python dict within location_analyzer.py containing ~50 entries with format: {'name': 'Eiffel Tower', 'city': 'Paris', 'country': 'France', 'lat': 48.858, 'lon': 2.294}. Include landmarks from major world regions: Europe (Eiffel Tower, Colosseum, Big Ben, Sagrada Familia, Acropolis, Brandenburg Gate, Tower Bridge, Leaning Tower of Pisa, Notre Dame, etc.), Americas (Statue of Liberty, Golden Gate Bridge, Machu Picchu, Christ the Redeemer, CN Tower, etc.), Asia (Great Wall, Taj Mahal, Mount Fuji, Angkor Wat, Petronas Towers, Sydney Opera House, etc.), Africa/Middle East (Pyramids of Giza, Burj Khalifa, etc.).",
+    "Step 4 - In the LocationAnalyzer.warmup() method, download/load the Places365 model weights (categories.txt and resnet50_places365.pth.tar from http://places2.csail.mit.edu/models_places365/ stored in settings.MODEL_CACHE_DIR), and load the CLIP model via open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k'). Handle download failures gracefully with logging.",
+    "Step 5 - Implement Places365 inference in a _classify_scene(image_path) private method: load image, apply standard torchvision transforms (resize 256, center crop 224, normalize with ImageNet means/stds), run through the Places365 ResNet50, apply softmax, return top-5 predictions above threshold as TagResult(category='WHERE', value=scene_label, confidence=score).",
+    "Step 6 - Implement CLIP landmark detection in a _detect_landmarks(image_path) private method: encode image with CLIP, compute cosine similarity against pre-computed text embeddings of 'a photo of {landmark_name}' for each landmark in the database. If any score exceeds threshold, produce TagResult(category='WHERE', value=landmark_name, confidence=score, bounding_box=json.dumps({'type':'landmark','city':city,'country':country,'lat':lat,'lon':lon})).",
+    "Step 7 - Implement GeoEstimation in a _estimate_geo(image_path) private method: use CLIP to compare image against geographic region text prompts like 'a photo taken in {region}' for regions including: tropical southeast asia, mediterranean europe, northern europe, east asia, south asia, middle east, sub-saharan africa, north america urban, south america, australia/oceania, arctic/subarctic. Map regions to approximate center lat/lon. If confidence exceeds threshold, use geopy Nominatim(user_agent='photo-tagger') to reverse geocode the region center, producing TagResult(category='WHERE', value='{city}, {country}', confidence=score, bounding_box=json.dumps({'type':'geo_estimate','lat':lat,'lon':lon,'region':region_name})).",
+    "Step 8 - Update backend/app/services/analysis/pipeline.py to import and instantiate LocationAnalyzer. Add it to the self.analyzers list AFTER SceneAnalyzer. The pipeline will run it like any other analyzer.",
+    "Step 9 - Run 'cd /projects/sandbox/backend && uv sync' to install the new dependencies.",
+    "Step 10 - Update backend/static/test.html to add a dropdown filter system above the gallery. Add: (a) A filter bar div with a <select> dropdown that fetches available tags from GET /api/tags and groups options by category (WHO, FACES, WHAT, WHERE) using <optgroup> elements. (b) When a tag is selected, reload the gallery with the filter applied using the existing API: GET /api/photos?categories={\"CATEGORY\":[\"value\"]}. (c) Include a 'Clear Filter' option to show all photos. (d) Style the filter bar to match the existing design (rounded, shadow, indigo accent). (e) Show the active filter as a removable chip/badge above the gallery grid.",
+    "Step 11 - Verify the implementation by importing the new module and confirming no syntax errors: run 'cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.location_analyzer import LocationAnalyzer; print(LocationAnalyzer)\"'"
+  ],
+  "acceptance_criteria": [
+    "LocationAnalyzer class exists in backend/app/services/analysis/location_analyzer.py and extends BaseAnalyzer",
+    "LocationAnalyzer implements all 3 tiers: Places365 scene classification, CLIP landmark detection, GeoEstimation with reverse geocoding",
+    "The landmark database contains at least 40 famous landmarks with name, city, country, lat, lon",
+    "LocationAnalyzer is registered in the AnalysisPipeline.analyzers list in pipeline.py",
+    "pyproject.toml includes open-clip-torch and geopy dependencies",
+    "The test.html page at /test has a dropdown/select filter that loads tags from GET /api/tags",
+    "The dropdown groups tags by category (WHO, FACES, WHAT, WHERE) using optgroup",
+    "Selecting a tag filters the gallery view using the existing API categories parameter",
+    "A clear filter option resets the gallery to show all photos",
+    "Running 'uv run python -c \"from app.services.analysis.location_analyzer import LocationAnalyzer\"' succeeds without errors",
+    "Running 'uv run python -c \"from app.services.analysis.pipeline import AnalysisPipeline\"' succeeds without errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/backend && uv sync",
+    "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.location_analyzer import LocationAnalyzer; la = LocationAnalyzer(); print('LocationAnalyzer instantiated OK')\"",
+    "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.pipeline import AnalysisPipeline; p = AnalysisPipeline(); print(f'Pipeline has {len(p.analyzers)} analyzers'); assert len(p.analyzers) == 4\"",
+    "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.location_analyzer import LocationAnalyzer, LANDMARKS; assert len(LANDMARKS) >= 40, f'Only {len(LANDMARKS)} landmarks'; print(f'{len(LANDMARKS)} landmarks OK')\"",
+    "Check that backend/static/test.html contains a select element for tag filtering"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

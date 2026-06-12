@@ -1,0 +1,32 @@
+{
+  "project_type": "Python FastAPI backend with ML analysis pipeline",
+  "language": "Python 3.11+",
+  "build_system": "uv (Python package manager), pyproject.toml for deps",
+  "test_framework": "pytest with pytest-asyncio, testpaths=['tests']",
+  "build_command": "cd /projects/sandbox/backend && uv sync",
+  "test_command": "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.pipeline import AnalysisPipeline; print('Import OK')\"",
+  "verification_instructions": "1. Run uv sync to install deps. 2. Import the new analyzer modules. 3. Run the server with 'uv run uvicorn app.main:app --port 8000' and test via /test page.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/backend && uv sync",
+  "environment_constraints": "CPU-only (no GPU), OPEN_INTERNET network mode (can install packages), torch 2.12 + torchvision 0.27 already installed, CLIP/transformers NOT installed (need to add via pyproject.toml)",
+  "contribution_requirements": "Follow existing patterns: BaseAnalyzer subclass, TagResult dataclass, category=WHERE for location tags",
+  "key_patterns": "BaseAnalyzer abstract class with analyze(image_path) -> list[TagResult] and warmup(). Pipeline orchestrates analyzers sequentially. Tags have category/value/confidence/bounding_box. bounding_box is JSON string field (can store lat/lon). SceneAnalyzer currently uses rule-based YOLO object detection.",
+  "relevant_files": [
+    "backend/app/services/analysis/base.py",
+    "backend/app/services/analysis/scene_analyzer.py",
+    "backend/app/services/analysis/pipeline.py",
+    "backend/app/services/analysis/object_analyzer.py",
+    "backend/app/services/analysis/face_analyzer.py",
+    "backend/app/models/photo.py",
+    "backend/app/schemas/photo.py",
+    "backend/app/api/routes/photos.py",
+    "backend/app/api/routes/tags.py",
+    "backend/app/services/photo_service.py",
+    "backend/app/config.py",
+    "backend/app/main.py",
+    "backend/app/api/dependencies.py",
+    "backend/static/test.html",
+    "backend/pyproject.toml"
+  ],
+  "directory_structure": "backend/app/services/analysis/ - ML analyzers (base, face, object, scene, pipeline). backend/app/api/routes/ - FastAPI endpoints. backend/app/models/ - SQLAlchemy models. backend/app/schemas/ - Pydantic schemas. backend/static/ - test.html served at /test."
+}

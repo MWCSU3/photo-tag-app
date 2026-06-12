@@ -4,6 +4,7 @@ import logging
 
 from app.services.analysis.base import BaseAnalyzer, TagResult
 from app.services.analysis.face_analyzer import FaceAnalyzer
+from app.services.analysis.location_analyzer import LocationAnalyzer
 from app.services.analysis.object_analyzer import ObjectAnalyzer
 from app.services.analysis.scene_analyzer import SceneAnalyzer
 
@@ -22,6 +23,7 @@ class AnalysisPipeline:
             FaceAnalyzer(),
             ObjectAnalyzer(),
             SceneAnalyzer(),
+            LocationAnalyzer(),
         ]
 
     async def warmup(self) -> None:

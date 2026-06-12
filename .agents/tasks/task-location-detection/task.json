@@ -1,0 +1,7 @@
+{
+  "task_id": "task-location-detection",
+  "task_description": "Implement 3-tier location detection (Places365, CLIP landmarks, GeoEstimation) and add dropdown filter UI to the test page",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
