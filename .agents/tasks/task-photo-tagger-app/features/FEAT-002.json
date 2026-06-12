@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Build the Next.js frontend with photo grid display, photo upload, and the multi-category filter/sort panel. The UI should display photos in a responsive grid, allow uploading new photos with real-time analysis feedback, and provide a sidebar filter panel where users can multi-select tags within categories (OR logic) and filter across categories (AND logic), with sort options by date, number of people, location, and tag confidence.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Create /projects/sandbox/frontend/ using 'pnpm create next-app@latest frontend' with TypeScript, Tailwind CSS, App Router, src/ directory enabled. Add dependencies: axios (or use fetch), @tanstack/react-query, lucide-react (icons), clsx, tailwind-merge. Install with pnpm.",
     "Create /projects/sandbox/frontend/src/lib/api.ts with typed API client functions: uploadPhoto(file: File), getPhotos(filters: FilterParams), getPhoto(id: string), getTags(), deletePhoto(id: string). Include TypeScript interfaces matching the backend schemas: Photo, Tag, TagCategory, FilterParams, SortOption, GroupOption.",
@@ -35,5 +35,5 @@
     "cd /projects/sandbox/frontend && pnpm lint 2>/dev/null || true"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build succeeds with Next.js 16.2.9 and Turbopack. Two lint warnings about using <img> instead of next/image which is intentional for dynamic backend images. All components use 'use client' directive. Tailwind CSS v4 uses @import 'tailwindcss' syntax instead of @tailwind directives."
 }
