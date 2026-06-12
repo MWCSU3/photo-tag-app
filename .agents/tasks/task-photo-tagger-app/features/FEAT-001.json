@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Scaffold the Python backend with FastAPI, database models, and the ML analysis pipeline. This includes the complete backend architecture: API endpoints for photo upload/retrieval/filtering, SQLAlchemy models for photos/tags/faces, and the pluggable ML analysis service with face detection (DeepFace), object detection (YOLOv8-nano), and scene classification.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create /projects/sandbox/backend/ directory with pyproject.toml using uv. Dependencies: fastapi, uvicorn[standard], sqlalchemy, aiosqlite, python-multipart, pillow, ultralytics (YOLOv8), deepface, tf-keras, opencv-python-headless, pydantic, pydantic-settings, alembic. Use Python 3.11 (pyenv local 3.11.15).",
     "Create /projects/sandbox/backend/app/__init__.py and /projects/sandbox/backend/app/main.py with FastAPI app instance, CORS middleware (allow localhost:3000), lifespan handler that initializes the database and downloads/warms ML models on startup.",
@@ -33,5 +33,5 @@
     "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.pipeline import AnalysisPipeline; print('Pipeline imports OK')\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 18 tests pass. Dependencies installed successfully via uv sync. Used pytest-asyncio 1.4.0 with auto mode. The ML pipeline is mocked in tests for speed. The hatchling build backend required explicit packages config in pyproject.toml [tool.hatch.build.targets.wheel]. The uv.lock file is generated but not committed (gitignored by default)."
 }

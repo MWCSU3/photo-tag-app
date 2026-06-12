@@ -1,1 +1,9 @@
 .pnpm-store/
+*.pt
+test_images/
+clickboomsend/
+node_modules/
+__pycache__/
+*.db
+uploads/
+.next/
