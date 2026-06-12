@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Integration testing and end-to-end wiring. Ensure the backend serves uploaded photos as static files accessible to the frontend, add a backend endpoint to serve photo files, verify the full upload-analyze-display-filter flow works, and add integration tests that exercise the complete pipeline.",
+  "status": "pending",
+  "steps": [
+    "Add a static file mount or endpoint in /projects/sandbox/backend/app/main.py to serve uploaded photos at /uploads/{filename} so the frontend can display them via img src.",
+    "Update /projects/sandbox/frontend/src/lib/api.ts to correctly construct image URLs pointing to the backend's static file serving endpoint.",
+    "Create /projects/sandbox/backend/tests/test_integration.py with an integration test that: creates a small test image (e.g., 100x100 solid color with PIL), uploads it via the API, verifies the response contains tags from at least one analyzer, retrieves the photo list and verifies it appears, tests filtering by a returned tag category, tests sorting by date.",
+    "Create a small test fixture image at /projects/sandbox/backend/tests/fixtures/test_photo.jpg (generate a simple image with PIL in a conftest fixture or use a script). This image should be small (100x100) to keep tests fast.",
+    "Verify the backend can start and the frontend can build. Run all backend tests including the new integration tests.",
+    "Add a /projects/sandbox/README.md with: project overview, architecture description, setup instructions (backend and frontend), how to run in development, API documentation summary, and notes on the ML models used."
+  ],
+  "acceptance_criteria": [
+    "Backend integration tests pass - full upload -> analyze -> retrieve -> filter flow works",
+    "Backend serves uploaded photos as accessible URLs",
+    "Frontend builds successfully and API client points to correct backend URLs",
+    "README.md documents the project setup and architecture",
+    "Running both backend and frontend simultaneously enables the full demo flow"
+  ],
+  "verification": [
+    "cd /projects/sandbox/backend && uv run pytest tests/ -v --tb=short",
+    "cd /projects/sandbox/frontend && pnpm build",
+    "cat /projects/sandbox/README.md | head -50"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

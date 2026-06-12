@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Scaffold the Python backend with FastAPI, database models, and the ML analysis pipeline. This includes the complete backend architecture: API endpoints for photo upload/retrieval/filtering, SQLAlchemy models for photos/tags/faces, and the pluggable ML analysis service with face detection (DeepFace), object detection (YOLOv8-nano), and scene classification.",
+  "status": "in_progress",
+  "steps": [
+    "Create /projects/sandbox/backend/ directory with pyproject.toml using uv. Dependencies: fastapi, uvicorn[standard], sqlalchemy, aiosqlite, python-multipart, pillow, ultralytics (YOLOv8), deepface, tf-keras, opencv-python-headless, pydantic, pydantic-settings, alembic. Use Python 3.11 (pyenv local 3.11.15).",
+    "Create /projects/sandbox/backend/app/__init__.py and /projects/sandbox/backend/app/main.py with FastAPI app instance, CORS middleware (allow localhost:3000), lifespan handler that initializes the database and downloads/warms ML models on startup.",
+    "Create /projects/sandbox/backend/app/config.py with pydantic-settings BaseSettings for configuration (DATABASE_URL, UPLOAD_DIR, MODEL_CACHE_DIR, MAX_FILE_SIZE, ALLOWED_EXTENSIONS).",
+    "Create /projects/sandbox/backend/app/database.py with async SQLAlchemy engine and session factory using aiosqlite. Include a get_db dependency and init_db function that creates all tables.",
+    "Create /projects/sandbox/backend/app/models/__init__.py and /projects/sandbox/backend/app/models/photo.py with SQLAlchemy models: Photo (id, filename, original_filename, filepath, upload_date, width, height, file_size, analyzed boolean, analysis_date), Tag (id, photo_id FK, category enum[WHO/FACES/WHAT/WHERE], value, confidence float, bounding_box JSON nullable), FaceEmbedding (id, photo_id FK, tag_id FK, embedding_vector bytes, cluster_label nullable).",
+    "Create /projects/sandbox/backend/app/schemas/__init__.py and /projects/sandbox/backend/app/schemas/photo.py with Pydantic v2 schemas: PhotoCreate, PhotoResponse (with tags), TagResponse, PhotoListResponse (with pagination), FilterParams (categories dict, sort_by, sort_order, group_by).",
+    "Create /projects/sandbox/backend/app/services/__init__.py and the analysis pipeline: /projects/sandbox/backend/app/services/analysis/__init__.py, /projects/sandbox/backend/app/services/analysis/base.py (abstract BaseAnalyzer class with async analyze(image_path) -> list[TagResult]), /projects/sandbox/backend/app/services/analysis/face_analyzer.py (DeepFace for face detection, age/gender/emotion attributes - outputs WHO and FACES category tags), /projects/sandbox/backend/app/services/analysis/object_analyzer.py (YOLOv8n for object detection - outputs WHAT category tags), /projects/sandbox/backend/app/services/analysis/scene_analyzer.py (scene/place classification using a simple CNN or YOLOv8 labels to infer location context - outputs WHERE category tags), /projects/sandbox/backend/app/services/analysis/pipeline.py (AnalysisPipeline class that orchestrates all analyzers, deduplicates results, and returns combined tags).",
+    "Create /projects/sandbox/backend/app/services/photo_service.py with business logic: save_upload (handles file storage to UPLOAD_DIR with UUID naming), analyze_photo (runs pipeline and stores tags in DB), get_photos (with filtering/sorting/pagination), get_photo_by_id, get_available_tags (returns all unique tags grouped by category for the filter panel).",
+    "Create /projects/sandbox/backend/app/api/__init__.py and /projects/sandbox/backend/app/api/routes/__init__.py, /projects/sandbox/backend/app/api/routes/photos.py with endpoints: POST /api/photos/upload (multipart file upload, triggers analysis, returns photo with tags), GET /api/photos (list with filter/sort/pagination query params), GET /api/photos/{id} (single photo with all tags), GET /api/tags (all available tags grouped by category), DELETE /api/photos/{id}. Include the router in main.py.",
+    "Create /projects/sandbox/backend/app/api/dependencies.py with shared dependencies (get_db session, get_analysis_pipeline).",
+    "Create /projects/sandbox/backend/tests/__init__.py, /projects/sandbox/backend/tests/conftest.py (pytest fixtures with test database, test client, sample image fixture), /projects/sandbox/backend/tests/test_api.py (test upload endpoint with a small test image, test list/filter endpoints, test tag retrieval), /projects/sandbox/backend/tests/test_models.py (test database model creation and relationships).",
+    "Create a .python-version file in /projects/sandbox/backend/ with content '3.11.15'. Run 'cd /projects/sandbox/backend && pyenv local 3.11.15 && uv sync' to install all dependencies. Run pytest to verify tests pass.",
+    "Ensure the uploads/ directory is created on startup and add a .gitkeep file. Add a /projects/sandbox/backend/.gitignore ignoring __pycache__, .venv, uploads/*.jpg, uploads/*.png, *.db, model_cache/."
+  ],
+  "acceptance_criteria": [
+    "Running 'cd /projects/sandbox/backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000' starts the server without errors",
+    "POST /api/photos/upload accepts an image file and returns a JSON response with photo metadata and detected tags in categories WHO, FACES, WHAT, WHERE",
+    "GET /api/photos returns a paginated list of photos with their tags",
+    "GET /api/photos supports filter query params: categories (JSON dict of category->values), sort_by, sort_order, group_by",
+    "GET /api/tags returns all unique tags grouped by category",
+    "The ML analysis pipeline processes images using face detection, object detection, and scene classification",
+    "All pytest tests pass"
+  ],
+  "verification": [
+    "cd /projects/sandbox/backend && uv run pytest tests/ -v",
+    "cd /projects/sandbox/backend && uv run python -c \"from app.main import app; print('FastAPI app loads OK')\"",
+    "cd /projects/sandbox/backend && uv run python -c \"from app.services.analysis.pipeline import AnalysisPipeline; print('Pipeline imports OK')\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

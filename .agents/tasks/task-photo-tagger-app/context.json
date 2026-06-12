@@ -1,0 +1,23 @@
+{
+  "project_type": "Full-stack photo tagging application with ML pipeline",
+  "language": "Python 3.11 (backend), TypeScript (frontend)",
+  "build_system": "uv for Python dependency management, pnpm for Node.js/Next.js",
+  "test_framework": "pytest for backend, jest/vitest for frontend",
+  "build_command": "cd /projects/sandbox/backend && uv run python -c 'import app; print(\"Backend OK\")' && cd /projects/sandbox/frontend && pnpm build",
+  "test_command": "cd /projects/sandbox/backend && uv run pytest tests/ -v && cd /projects/sandbox/frontend && pnpm test",
+  "verification_instructions": "1. Start backend: cd backend && uv run uvicorn app.main:app --port 8000. 2. Start frontend: cd frontend && pnpm dev. 3. Upload a photo via UI or curl POST /api/photos/upload. 4. Verify tags appear in response. 5. Verify filter panel works with tag categories.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "1. pyenv local 3.11.15 in backend dir. 2. uv sync in backend dir. 3. pnpm install in frontend dir.",
+  "environment_constraints": "OPEN_INTERNET - full access to install packages. Python 3.11.15 available via pyenv. Node 22 with pnpm. No GPU - ML models will run on CPU (lightweight variants preferred for demo). SQLite for database (no external DB service needed).",
+  "contribution_requirements": "Greenfield project - establish clean architecture patterns from scratch.",
+  "key_patterns": "Backend: FastAPI with async endpoints, SQLAlchemy ORM with SQLite, Pydantic schemas, service layer pattern. Frontend: Next.js 14 App Router, TypeScript, Tailwind CSS, React Query for data fetching. ML Pipeline: Pluggable analyzers with a common interface, async processing.",
+  "relevant_files": [
+    "/projects/sandbox/backend/app/main.py",
+    "/projects/sandbox/backend/app/models/",
+    "/projects/sandbox/backend/app/services/analysis/",
+    "/projects/sandbox/backend/app/api/routes/",
+    "/projects/sandbox/frontend/src/app/",
+    "/projects/sandbox/frontend/src/components/"
+  ],
+  "directory_structure": "backend/ - Python FastAPI application with ML analysis pipeline. frontend/ - Next.js 14 React application with photo grid and filter UI. Both at /projects/sandbox/ root level."
+}

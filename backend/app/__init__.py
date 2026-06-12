@@ -1,0 +1,1 @@
+"""Photo Tagger Backend Application."""

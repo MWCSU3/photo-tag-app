@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Build the Next.js frontend with photo grid display, photo upload, and the multi-category filter/sort panel. The UI should display photos in a responsive grid, allow uploading new photos with real-time analysis feedback, and provide a sidebar filter panel where users can multi-select tags within categories (OR logic) and filter across categories (AND logic), with sort options by date, number of people, location, and tag confidence.",
+  "status": "pending",
+  "steps": [
+    "Create /projects/sandbox/frontend/ using 'pnpm create next-app@latest frontend' with TypeScript, Tailwind CSS, App Router, src/ directory enabled. Add dependencies: axios (or use fetch), @tanstack/react-query, lucide-react (icons), clsx, tailwind-merge. Install with pnpm.",
+    "Create /projects/sandbox/frontend/src/lib/api.ts with typed API client functions: uploadPhoto(file: File), getPhotos(filters: FilterParams), getPhoto(id: string), getTags(), deletePhoto(id: string). Include TypeScript interfaces matching the backend schemas: Photo, Tag, TagCategory, FilterParams, SortOption, GroupOption.",
+    "Create /projects/sandbox/frontend/src/lib/types.ts with shared TypeScript types: Photo (id, filename, originalFilename, uploadDate, width, height, analyzed, tags), Tag (id, category, value, confidence, boundingBox), TagCategory enum (WHO, FACES, WHAT, WHERE), FilterState (selectedTags per category, sortBy, sortOrder, groupBy), SortBy enum (date, numPeople, location, confidence), GroupBy enum (date, location, person).",
+    "Create /projects/sandbox/frontend/src/components/PhotoGrid.tsx - responsive grid layout (CSS Grid with auto-fill, min 200px columns) displaying photo thumbnails. Each card shows the image, a few top tags as pills/badges colored by category, upload date, and number of people detected. Clicking a photo opens a detail view. Include loading skeleton state.",
+    "Create /projects/sandbox/frontend/src/components/PhotoCard.tsx - individual photo card component with image thumbnail, tag badges (color-coded by category: WHO=blue, FACES=purple, WHAT=green, WHERE=orange), date, and hover state showing more details.",
+    "Create /projects/sandbox/frontend/src/components/FilterPanel.tsx - left sidebar filter panel with: collapsible sections for each tag category (Who, Faces, What, Where), checkbox multi-select within each category (OR logic), active filter pills showing current selections with X to remove, sort dropdown (by date, num people, location, confidence), sort order toggle (asc/desc), group by dropdown (date, location, person), reset all filters button. The panel should be responsive (drawer on mobile, fixed sidebar on desktop).",
+    "Create /projects/sandbox/frontend/src/components/UploadModal.tsx - modal/dialog for photo upload with: drag-and-drop zone, file browser button, upload progress indicator, real-time analysis status (uploading -> analyzing -> complete), display of detected tags after analysis completes, ability to upload multiple photos sequentially.",
+    "Create /projects/sandbox/frontend/src/components/PhotoDetail.tsx - full photo view showing: large image, all detected tags organized by category with confidence scores, bounding boxes overlaid on image (for face/object detections that have bbox data), date and file info.",
+    "Create /projects/sandbox/frontend/src/app/page.tsx as the main page - layout with FilterPanel sidebar on the left, PhotoGrid as the main content area, upload button (floating action button or header button) that opens UploadModal. Use React Query for data fetching with proper loading/error states. Wire up filter state to API calls.",
+    "Create /projects/sandbox/frontend/src/app/layout.tsx with React Query provider, global styles, app title 'PhotoTagger', and responsive layout structure.",
+    "Create /projects/sandbox/frontend/src/app/globals.css with Tailwind directives and any custom utility classes for tag category colors and transitions.",
+    "Create /projects/sandbox/frontend/next.config.ts with image domains configuration to allow loading images from the backend (localhost:8000), and rewrites/proxy to forward /api calls to the backend in development.",
+    "Add /projects/sandbox/frontend/.env.local with NEXT_PUBLIC_API_URL=http://localhost:8000.",
+    "Run 'cd /projects/sandbox/frontend && pnpm build' to verify the frontend compiles without errors. Run 'pnpm test' if tests are configured, or add a basic smoke test."
+  ],
+  "acceptance_criteria": [
+    "Running 'cd /projects/sandbox/frontend && pnpm build' completes without TypeScript or build errors",
+    "The main page renders a photo grid layout with a filter panel sidebar",
+    "The filter panel has collapsible sections for WHO, FACES, WHAT, WHERE categories with multi-select checkboxes",
+    "Filter logic: selecting multiple tags within a category uses OR, selecting across categories uses AND",
+    "Sort options include date, number of people, location, and tag confidence with asc/desc toggle",
+    "Group by options include date, location, and person",
+    "Upload modal supports drag-and-drop and shows analysis progress",
+    "Photo cards display color-coded tag badges by category",
+    "The app is responsive - sidebar collapses to a drawer on mobile viewport sizes"
+  ],
+  "verification": [
+    "cd /projects/sandbox/frontend && pnpm build",
+    "cd /projects/sandbox/frontend && pnpm lint 2>/dev/null || true"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

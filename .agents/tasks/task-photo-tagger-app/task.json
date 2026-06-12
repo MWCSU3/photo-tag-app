@@ -1,0 +1,7 @@
+{
+  "task_id": "task-photo-tagger-app",
+  "task_description": "Build a full-stack photo tagging application with ML-powered analysis. The app uses face detection (DeepFace), object detection (YOLOv8), and scene classification to automatically tag photos into categories: Who (people), Faces (attributes), What (objects/activities), Where (scene/location). Features a React/Next.js frontend with responsive photo grid, multi-category filter panel with OR/AND logic, sortable by multiple criteria, and groupable by date/location/person. Python FastAPI backend with async API, SQLite database, and pluggable ML analysis pipeline.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
